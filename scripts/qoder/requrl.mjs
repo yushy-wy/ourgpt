@@ -1,0 +1,10 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+const f = process.argv[2] || path.join(os.homedir(), ".qoder-cn", "shared_client", "logs", "qoder.log");
+const s = fs.readFileSync(f, "utf8");
+const lines = s.split(/\r?\n/);
+const out = [];
+for (const l of lines) if (/Request url:/.test(l)) out.push(l);
+console.log("total request-url lines:", out.length);
+console.log(out.slice(-25).join("\n"));

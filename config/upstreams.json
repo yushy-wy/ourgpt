@@ -1,0 +1,59 @@
+{
+  "mock": {
+    "adapter": "mock",
+    "models": [
+      "mock-codex",
+      "mock-tools"
+    ]
+  },
+  "modelscope": {
+    "adapter": "passthrough",
+    "base_url": "https://api-inference.modelscope.cn/v1",
+    "api_key_env": "MODELSCOPE_API_KEY",
+    "models": [
+      "deepseek-ai/DeepSeek-V4.1-Flash-1017"
+    ]
+  },
+  "deepseek": {
+    "adapter": "passthrough",
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "models": [
+      "deepseek-chat",
+      "deepseek-reasoner"
+    ]
+  },
+  "workbuddy": {
+    "adapter": "workbuddy",
+    "models": [
+      "deepseek-v4.1-flash",
+      "glm-5.3",
+      "kimi-k3.1-pro",
+      "minimax-m2.7"
+    ],
+    "dynamic_models": true
+  },
+  "chatgpt-web": {
+    "adapter": "chatgpt-web",
+    "models": [
+      "gpt-6-web"
+    ]
+  },
+  "qoder": {
+    "adapter": "qoder",
+    "models": [
+      "Auto",
+      "Fast",
+      "Qwen3.8-Max",
+      "Qwen3.8-Flash",
+      "DeepSeek-V4-Pro",
+      "DeepSeek-Flash",
+      "GLM-5.3",
+      "GLM-5.3-Flash",
+      "Kimi-K3.1-Pro",
+      "Kimi-K2.8-Preview",
+      "MiniMax-M3.1-Flash"
+    ],
+    "dynamic_models": true
+  }
+}

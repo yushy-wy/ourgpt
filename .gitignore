@@ -1,0 +1,9 @@
+.env
+config/keys.json
+data/
+node_modules/
+.codex-home/
+.qoder-credits/
+logs/
+*.log
+.flow/

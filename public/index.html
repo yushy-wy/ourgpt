@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OurGPT 控制台</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: #0f1115; color: #e6e8ee;
+    font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 14px; margin: 0 0 10px; color: #9aa3b2; font-weight: 600; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #f1c40f; }
+  .dot.ok { background: #2ecc71; } .dot.bad { background: #e74c3c; }
+  #status { color: #9aa3b2; font-size: 13px; }
+  .spacer { flex: 1; }
+  button {
+    background: #1e2430; color: #cfd6e4; border: 1px solid #2c3444;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #263041; }
+  button.mini { padding: 2px 8px; font-size: 12px; }
+  input[type=text] {
+    background: #141821; color: #e6e8ee; border: 1px solid #2c3444;
+    padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 180px;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .card { background: #171a21; border: 1px solid #242a36; border-radius: 10px; padding: 14px 16px; }
+  .card label { display: block; color: #7d879a; font-size: 12px; margin-bottom: 6px; }
+  .card strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+  section { margin-bottom: 24px; }
+  .tablewrap { overflow-x: auto; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; background: #171a21; border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #212732; font-size: 13px; white-space: nowrap; }
+  th { color: #7d879a; font-weight: 500; background: #141821; }
+  tr:last-child td { border-bottom: none; }
+  th.num, td.num { text-align: left; font-variant-numeric: tabular-nums; width: 96px; }
+  td.model { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; }
+  .tag.ok { background: #12331f; color: #4ade80; }
+  .tag.err { background: #3a1518; color: #f87171; }
+  .muted { color: #6b7488; }
+  code, .mono { font-family: ui-monospace, Consolas, monospace; }
+  .panel { background: #171a21; border: 1px solid #242a36; border-radius: 10px; padding: 14px 16px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; flex-wrap: wrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: #1d2430; border: 1px solid #2a3344; padding: 3px 9px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .chip:hover { border-color: #3b4a63; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; margin-left: 6px; }
+  .badge.tool-yes { background: #12331f; color: #4ade80; }
+  .badge.tool-no { background: #33250f; color: #fbbf24; }
+  .grp { margin-bottom: 10px; }
+  .grp .head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .updot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .usercard { cursor: pointer; transition: border-color .15s; }
+  .usercard:hover { border-color: #3b4a63; }
+  .usercard.sel { border-color: #5b7cc6; background: #18202e; }
+  .detail { border-top: 1px dashed #2c3444; margin-top: 8px; padding-top: 8px; }
+  .kbox { background: #10151d; border: 1px solid #2a3344; border-radius: 8px; padding: 10px 12px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+  .empty { color: #6b7488; padding: 16px; text-align: center; }
+  .datebtns button.on { border-color: #5b7cc6; color: #dbe4f5; }
+  @media (max-width: 720px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    td.model { max-width: 130px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>OurGPT</h1>
+  <span class="dot" id="dot"></span>
+  <span id="status">连接中…</span>
+  <span class="spacer"></span>
+  <button id="refresh">刷新</button>
+</header>
+
+<section class="cards">
+  <div class="card"><label id="l-req">今日请求</label><strong id="k-req">–</strong></div>
+  <div class="card"><label id="l-in">今日输入 token</label><strong id="k-in">–</strong></div>
+  <div class="card"><label id="l-out">今日输出 token</label><strong id="k-out">–</strong></div>
+  <div class="card"><label>活跃用户</label><strong id="k-users">–</strong></div>
+</section>
+
+<section>
+  <div class="row" style="justify-content:space-between">
+    <h2 style="margin:0">按用户用量 <span class="muted" style="font-weight:400">（点击卡片看该用户的上游明细）</span></h2>
+    <div class="row datebtns" style="gap:6px">
+      <button data-d="today" class="mini on">今天</button>
+      <button data-d="yesterday" class="mini">昨天</button>
+      <button data-d="all" class="mini">全部</button>
+    </div>
+  </div>
+  <div class="cards" id="usercards"></div>
+  <div class="panel" id="udetail" style="display:none"></div>
+</section>
+
+<section>
+  <h2 id="recent-title">最近请求</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>时间</th><th>用户</th><th>上游</th><th>模型</th><th class="num">输入/输出</th><th>状态</th><th class="num">耗时</th></tr></thead>
+      <tbody id="entries"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>模型（按上游分组）</h2>
+  <div id="groups"></div>
+</section>
+
+<section>
+  <h2>接入信息 <span class="muted" style="font-weight:400">（换网络后地址会变，以这里探测到的为准）</span></h2>
+  <div class="panel" id="access"></div>
+</section>
+
+<section>
+  <h2>内部 Key</h2>
+  <div class="panel" id="keyspanel"></div>
+</section>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const num = (n) => (n >= 10000 ? (n / 1000).toFixed(1) + "k" : String(n ?? 0));
+const today = (off = 0) => { const d = new Date(); d.setDate(d.getDate() - off); return d.toLocaleDateString("sv-SE"); };
+const hhmm = (ts) => { const d = new Date(ts); return isNaN(d) ? "-" : d.toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }); };
+const UP_COLOR = { workbuddy: "#4ade80", qoder: "#a78bfa", "chatgpt-web": "#fb923c", chatgpt: "#f472b6", modelscope: "#38bdf8", deepseek: "#22d3ee", mock: "#64748b" };
+const upColor = (u) => UP_COLOR[u] || "#8b9bb4";
+const UP_LABEL = { workbuddy: "WorkBuddy", qoder: "Qoder", "chatgpt-web": "ChatGPT 网页", chatgpt: "ChatGPT 订阅", modelscope: "魔搭", deepseek: "DeepSeek", mock: "Mock" };
+const isLocal = () => ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
+
+const state = { date: "today", user: null, info: null, keysError: "" };
+
+async function jfetch(url, opts) {
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error?.message || `HTTP ${r.status}`);
+  return j;
+}
+
+function copy(text, btn) {
+  navigator.clipboard?.writeText(text).then(() => {
+    if (!btn) return;
+    const old = btn.textContent;
+    btn.textContent = "已复制";
+    setTimeout(() => (btn.textContent = old), 1500);
+  });
+}
+
+let usageLoading = false;
+async function loadUsage() {
+  if (usageLoading) return;
+  usageLoading = true;
+  try {
+    await loadUsageInner();
+  } finally {
+    usageLoading = false;
+  }
+}
+
+async function loadUsageInner() {
+  const date = state.date === "all" ? undefined : state.date === "yesterday" ? today(1) : today(0);
+  const qs = date ? `?date=${encodeURIComponent(date)}` : "";
+  const [ledger, entriesData] = await Promise.all([
+    jfetch("/admin/ledger" + qs),
+    jfetch("/admin/entries" + (qs ? qs + "&limit=40" : "?limit=40")),
+  ]);
+
+  const byUser = new Map();
+  for (const r of ledger.summary) {
+    const u = byUser.get(r.user) || { user: r.user, requests: 0, errors: 0, in: 0, out: 0, ups: new Map() };
+    u.requests += r.requests;
+    u.errors += r.errors || 0;
+    u.in += r.input_tokens;
+    u.out += r.output_tokens;
+    for (const [name, v] of Object.entries(r.by_upstream)) {
+      const up = u.ups.get(name) || { requests: 0, in: 0, out: 0 };
+      up.requests += v.requests; up.in += v.input_tokens; up.out += v.output_tokens;
+      u.ups.set(name, up);
+    }
+    byUser.set(r.user, u);
+  }
+  const users = [...byUser.values()].sort((a, b) => b.requests - a.requests);
+
+  $("l-req").textContent = state.date === "all" ? "累计请求" : state.date === "yesterday" ? "昨日请求" : "今日请求";
+  $("l-in").textContent = (state.date === "all" ? "累计" : state.date === "yesterday" ? "昨日" : "今日") + "输入 token";
+  $("l-out").textContent = (state.date === "all" ? "累计" : state.date === "yesterday" ? "昨日" : "今日") + "输出 token";
+  $("k-req").textContent = users.reduce((s, u) => s + u.requests, 0);
+  $("k-in").textContent = num(users.reduce((s, u) => s + u.in, 0));
+  $("k-out").textContent = num(users.reduce((s, u) => s + u.out, 0));
+  $("k-users").textContent = users.length;
+
+  $("usercards").innerHTML = users.length
+    ? users.map((u) => `
+      <div class="card usercard${state.user === u.user ? " sel" : ""}" data-user="${esc(u.user)}">
+        <label>${esc(u.user)}</label>
+        <strong>${u.requests}</strong> <span class="muted">请求</span><br>
+        <span class="muted" style="font-size:12px">入 ${num(u.in)} · 出 ${num(u.out)}${u.errors ? ` · <span style="color:#f87171">错 ${u.errors}</span>` : ""}</span><br>
+        <div class="chips" style="margin-top:6px">${[...u.ups.entries()].map(([n, v]) => `<span class="chip" style="border-color:${upColor(n)}55">${esc(UP_LABEL[n] || n)} ${v.requests}</span>`).join("")}</div>
+      </div>`).join("")
+    : `<div class="empty">该时段还没有用量</div>`;
+  document.querySelectorAll(".usercard").forEach((el) => (el.onclick = () => { state.user = state.user === el.dataset.user ? null : el.dataset.user; loadUsage(); }));
+
+  renderDetail(ledger, entriesData.entries);
+}
+
+async function renderDetail(ledger, entries) {
+  const box = $("udetail");
+  const user = state.user;
+  if (!user) {
+    box.style.display = "none";
+    $("recent-title").textContent = "最近请求（全部用户）";
+    renderEntries(entries);
+    return;
+  }
+  box.style.display = "";
+  const rows = ledger.summary.filter((r) => r.user === user);
+  const ups = new Map();
+  for (const r of rows) for (const [n, v] of Object.entries(r.by_upstream)) {
+    const cur = ups.get(n) || { requests: 0, in: 0, out: 0, errors: 0 };
+    cur.requests += v.requests; cur.in += v.input_tokens; cur.out += v.output_tokens;
+    ups.set(n, cur);
+  }
+  const mine = await jfetch(`/admin/entries?user=${encodeURIComponent(user)}&limit=20`);
+  if (state.user !== user) return;
+  $("recent-title").textContent = `最近请求（${user}）`;
+  renderEntries(mine.entries);
+  box.innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <strong>${esc(user)}</strong>
+      <button class="mini" id="clearuser">收起</button>
+    </div>
+    <table><thead><tr><th>上游</th><th class="num">请求</th><th class="num">输入</th><th class="num">输出</th></tr></thead>
+    <tbody>${[...ups.entries()].map(([n, v]) => `<tr><td><span class="updot" style="background:${upColor(n)}"></span> ${esc(UP_LABEL[n] || n)}</td><td class="num">${v.requests}</td><td class="num">${num(v.in)}</td><td class="num">${num(v.out)}</td></tr>`).join("")}</tbody></table>`;
+  $("clearuser").onclick = () => { state.user = null; loadUsage(); };
+}
+
+function renderEntries(list) {
+  $("entries").innerHTML = list.length
+    ? list.map((e) => `<tr>
+        <td class="mono muted">${hhmm(e.ts)}</td><td>${esc(e.user)}</td>
+        <td><span class="updot" style="background:${upColor(e.upstream)}"></span> ${esc(UP_LABEL[e.upstream] || e.upstream)}</td>
+        <td class="mono model" title="${esc(e.model)}">${esc(e.model)}</td>
+        <td class="num">${num(e.usage?.input_tokens)}/${num(e.usage?.output_tokens)}</td>
+        <td><span class="tag ${e.status === 200 ? "ok" : "err"}">${e.status}</span></td>
+        <td class="num muted">${e.duration_ms}ms</td></tr>`).join("")
+    : `<tr><td colspan="7" class="empty">还没有请求</td></tr>`;
+}
+
+async function loadModels() {
+  const { groups } = await jfetch("/admin/models");
+  $("groups").innerHTML = groups.map((g) => `
+    <div class="panel grp">
+      <div class="head">
+        <span class="updot" style="background:${upColor(g.upstream)}"></span>
+        <strong>${esc(UP_LABEL[g.upstream] || g.upstream)}</strong>
+        <span class="badge ${g.tools ? "tool-yes" : "tool-no"}">${g.tools ? "工具调用 ✓" : "仅对话 ✕"}</span>
+        <span class="muted">${g.models.length} 个模型 · ${esc(g.adapter)}</span>
+      </div>
+      <div class="chips">${g.models.map((m) => `<span class="chip" data-copy="${esc(m)}" title="点击复制">${esc(m)}</span>`).join("")}</div>
+    </div>`).join("") || `<div class="empty">无模型</div>`;
+  document.querySelectorAll(".chip[data-copy]").forEach((el) => (el.onclick = () => copy(el.dataset.copy, el)));
+}
+
+async function loadAccess() {
+  const info = await jfetch("/admin/info");
+  state.info = info;
+  const list = [location.origin + "/v1", ...info.baseUrls.filter((u) => !u.includes(location.hostname))];
+  $("access").innerHTML = `
+    <div class="row"><span class="muted" style="min-width:90px">当前访问</span><code>${esc(location.origin + "/v1")}</code>
+      <button class="mini" data-c="${esc(location.origin + "/v1")}">复制</button></div>
+    ${list.filter((u) => u !== location.origin + "/v1").map((u) => `
+      <div class="row"><span class="muted" style="min-width:90px">局域网</span><code>${esc(u)}</code>
+        <button class="mini" data-c="${esc(u)}">复制</button></div>`).join("")}
+    <div class="row muted" style="font-size:12px">员工端把 Base URL 指到上面任意一个可达地址 + 内部 key；服务重启或换网络后回到本页确认最新地址。</div>`;
+  document.querySelectorAll("#access button[data-c]").forEach((b) => (b.onclick = () => copy(b.dataset.c, b)));
+}
+
+async function loadKeys(created) {
+  const panel = $("keyspanel");
+  if (!isLocal()) {
+    panel.innerHTML = `<div class="muted">创建 / 查看 key 仅允许在本机浏览器操作（${esc(location.hostname)} 非本机）。</div>`;
+    return;
+  }
+  let keys = [];
+  try { keys = (await jfetch("/admin/keys")).keys; } catch (e) { state.keysError = e.message; }
+  const base = (state.info?.baseUrls || [location.origin + "/v1"])[0];
+  panel.innerHTML = `
+    <div class="row">
+      <input type="text" id="kuser" placeholder="用户名，如 zhangsan" maxlength="24">
+      <button id="kcreate">创建 key</button>
+    </div>
+    ${created ? `
+      <div class="kbox" id="kresult">key（只显示这一次，立刻复制保存）：\n${esc(created.key)}\n\n给该用户的 ~/.codex/config.toml：\nmodel_provider = "ourgpt"\n\n[model_providers.ourgpt]\nname = "OurGPT"\nbase_url = "${esc(created.base)}"\nenv_key = "OURGPT_API_KEY"\nwire_api = "responses"\n\n并设置环境变量 OURGPT_API_KEY=${esc(created.key)}</div>
+      <div class="row"><button class="mini" id="kcopy">复制 key</button></div>` : ""}
+    <table style="margin-top:10px"><thead><tr><th>key（掩码）</th><th>用户</th><th>创建时间</th></tr></thead>
+      <tbody>${keys.map((k) => `<tr><td class="mono">${esc(k.masked)}</td><td>${esc(k.user)}</td><td class="muted">${esc(k.createdAt ? hhmm(k.createdAt) : "—")}</td></tr>`).join("") || `<tr><td colspan="3" class="empty">无</td></tr>`}</tbody></table>
+    ${state.keysError ? `<div class="muted">${esc(state.keysError)}</div>` : ""}`;
+  $("kcreate").onclick = async () => {
+    const user = $("kuser").value.trim();
+    try {
+      const r = await jfetch("/admin/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user }) });
+      const base = (state.info?.baseUrls || [location.origin + "/v1"])[0];
+      await loadKeys({ ...r, base });
+    } catch (e) { state.keysError = e.message; await loadKeys(); }
+  };
+  const kc = $("kcopy");
+  if (kc) kc.onclick = () => copy(kc.dataset.key || created.key, kc);
+  if (created && kc) kc.dataset.key = created.key;
+}
+
+async function loadAll() {
+  try {
+    const health = await jfetch("/health");
+    $("dot").className = "dot ok";
+    $("status").textContent = `运行中 · ${health.models.length} 个模型`;
+    await Promise.all([loadUsage(), loadModels(), loadAccess(), loadKeys(state.createdKey)]);
+    state.createdKey = null;
+  } catch (err) {
+    $("dot").className = "dot bad";
+    $("status").textContent = `连接失败：${err.message}`;
+  }
+}
+
+document.querySelectorAll(".datebtns button").forEach((b) => {
+  b.onclick = () => {
+    state.date = b.dataset.d;
+    document.querySelectorAll(".datebtns button").forEach((x) => x.classList.toggle("on", x === b));
+    loadUsage();
+  };
+});
+$("refresh").onclick = loadAll;
+loadAll();
+setInterval(loadUsage, 5000);
+setInterval(() => { loadModels(); loadAccess(); }, 30000);
+</script>
+</body>
+</html>
